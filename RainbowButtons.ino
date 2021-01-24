@@ -1,12 +1,12 @@
 /*
-  Rainbow Button Keyboard
-  Nigel James Brown - September 17th 2020
+  Rainbow Button MIDI
+  Nigel James Brown - January 24th 2021
 
   Each pin of the Pro-Micro should be connected to one side of a button
   The other side of all the buttons should be connected to the ground pin
 
   Each of the pins - listed in buttonPinMap are set as inputs with the built in pull-up resistors
-  When one of the pins changes state a key value for press or release will be sent from the buttonKeyMap array
+  When one of the pins changes state a MIDI Note for press or release will be sent from the buttonKeyMap array
 
   To expand this - change the NUM_BUTTONS value and increase the size of the three arrays
   buttonKeyMap, buttonPinMap and keyState.
@@ -15,11 +15,10 @@
   
 */
 
-// **** KEYBOARD SETUP ****
-
-#include "Keyboard.h"
+// **** MIDI SETUP ****
+#include <MIDIUSB.h>
 #define NUM_BUTTONS 3
-uint8_t buttonKeyMap[NUM_BUTTONS] = {KEY_F19, KEY_F20, KEY_F21};
+uint8_t buttonKeyMap[NUM_BUTTONS] = {60, 61, 62}; // Middle C, C# and D
 uint8_t buttonPinMap[NUM_BUTTONS] = {2,3,4};
 bool keyState[NUM_BUTTONS] = {true, true, true};
 
@@ -57,7 +56,7 @@ void setup() {
     pinMode(buttonPinMap[i], INPUT_PULLUP);
   }
 
-  Keyboard.begin();
+  // No MIDI setup required
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
@@ -76,7 +75,7 @@ void loop() {
       if (sensorVal == 0)
       {
         // Key has been pressed
-        Keyboard.press(buttonKeyMap[i]);
+        noteOn(0, buttonKeyMap[i], 127);
 
         pixelBrightness[i] = 255;
 
@@ -87,7 +86,7 @@ void loop() {
       else
       {
         // Key has been released
-        Keyboard.release(buttonKeyMap[i]);
+        noteOff(0, buttonKeyMap[i], 0);
 
         // delay here
         delay(100);
@@ -104,6 +103,9 @@ void loop() {
     }
   }
 
+  // Send the latest MIDI events
+  MidiUSB.flush();
+
   // Set up the three buttons as Red, Green and Blue
   strip.setPixelColor(0, strip.Color(pixelBrightness[0],0,0));
   strip.setPixelColor(1, strip.Color(0,pixelBrightness[1],0));
@@ -112,4 +114,22 @@ void loop() {
   strip.show();
   delay(5);
   
+}
+
+
+// MIDI Functions
+// --------------
+
+void noteOn(byte channel, byte pitch, byte velocity) {
+
+  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+
+  MidiUSB.sendMIDI(noteOn);
+}
+
+void noteOff(byte channel, byte pitch, byte velocity) {
+
+  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+
+  MidiUSB.sendMIDI(noteOff);
 }
