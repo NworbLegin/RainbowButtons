@@ -48,7 +48,7 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup() {
   //start serial connection
-  // Serial.begin(9600);
+  Serial.begin(115200);
 
   // Set all inputs to internal pullups
   for (int i=0; i<NUM_BUTTONS; i++)
@@ -62,6 +62,9 @@ void setup() {
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(255); // Set BRIGHTNESS to max = 255
 }
+bool gRedOnOff = true;
+bool gGreenOnOff = true;
+bool gBlueOnOff = true;
 
 
 void loop() {
@@ -107,13 +110,45 @@ void loop() {
   MidiUSB.flush();
 
   // Set up the three buttons as Red, Green and Blue
-  strip.setPixelColor(0, strip.Color(pixelBrightness[0],0,0));
-  strip.setPixelColor(1, strip.Color(0,pixelBrightness[1],0));
-  strip.setPixelColor(2, strip.Color(0,0,pixelBrightness[2]));
+  strip.setPixelColor(0, gRedOnOff?strip.Color(pixelBrightness[0],0,0):0);
+  strip.setPixelColor(1, gGreenOnOff?strip.Color(0,pixelBrightness[1],0):0);
+  strip.setPixelColor(2, gBlueOnOff?strip.Color(0,0,pixelBrightness[2]):0);
 
   strip.show();
   delay(5);
   
+  if (1) // MidiUSB.available())
+  {
+      midiEventPacket_t event = MidiUSB.read();
+      // Decode the value
+      if (event.header != 0)
+      {
+          uint8_t type = event.header;
+          uint8_t channel = (event.byte1 & 0x0F);
+          char t[64];
+          snprintf(t, 64, "header:%i type:%i channel:%i", event.header, type, channel);
+          Serial.println(t);
+          if (type == 9)
+          {
+              // We have a note on event
+              // Get the keyNumber and Velocity
+              uint8_t keyNumber = event.byte2 & 0x7f;
+              uint8_t velocity = event.byte3 & 0x7f;
+              if (keyNumber == 60)
+              {
+                  gRedOnOff = !gRedOnOff;
+              }
+              if (keyNumber == 61)
+              {
+                  gGreenOnOff = !gGreenOnOff;
+              }
+              if (keyNumber == 62)
+              {
+                  gBlueOnOff = !gBlueOnOff;
+              }
+          }
+      }
+  }
 }
 
 
