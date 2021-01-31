@@ -15,13 +15,20 @@
   
 */
 
+struct simpleColour
+{
+    byte red;
+    byte green;
+    byte blue;
+};
+
 // **** MIDI SETUP ****
 #include <MIDIUSB.h>
 #define NUM_BUTTONS 3
 uint8_t buttonKeyMap[NUM_BUTTONS] = {60, 61, 62}; // Middle C, C# and D
 uint8_t buttonPinMap[NUM_BUTTONS] = {2,3,4};
 bool keyState[NUM_BUTTONS] = {true, true, true};
-
+simpleColour buttonColour[NUM_BUTTONS] = { {255,0,0},{0,255,0},{0,0,255} };
 
 // **** LED SETUP ****
 
@@ -62,10 +69,6 @@ void setup() {
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(255); // Set BRIGHTNESS to max = 255
 }
-bool gRedOnOff = true;
-bool gGreenOnOff = true;
-bool gBlueOnOff = true;
-
 
 void loop() {
   //read the pushbutton value into a variable
@@ -104,15 +107,16 @@ void loop() {
     {
       pixelBrightness[i]--;
     }
+
+    strip.setPixelColor(i, strip.Color(
+        (buttonColour[i].red * pixelBrightness[i]) / 255,
+        (buttonColour[i].green * pixelBrightness[i]) / 255,
+        (buttonColour[i].blue * pixelBrightness[i]) / 255
+    ));
   }
 
   // Send the latest MIDI events
   MidiUSB.flush();
-
-  // Set up the three buttons as Red, Green and Blue
-  strip.setPixelColor(0, gRedOnOff?strip.Color(pixelBrightness[0],0,0):0);
-  strip.setPixelColor(1, gGreenOnOff?strip.Color(0,pixelBrightness[1],0):0);
-  strip.setPixelColor(2, gBlueOnOff?strip.Color(0,0,pixelBrightness[2]):0);
 
   strip.show();
   delay(5);
@@ -136,15 +140,40 @@ void loop() {
               uint8_t velocity = event.byte3 & 0x7f;
               if (keyNumber == 60)
               {
-                  gRedOnOff = !gRedOnOff;
+//                  gRedOnOff = !gRedOnOff;
+                  pixelBrightness[0] = 255;
+
               }
               if (keyNumber == 61)
               {
-                  gGreenOnOff = !gGreenOnOff;
+//                  gGreenOnOff = !gGreenOnOff;
+                  pixelBrightness[1] = 255;
               }
               if (keyNumber == 62)
               {
-                  gBlueOnOff = !gBlueOnOff;
+//                  gBlueOnOff = !gBlueOnOff;
+                  pixelBrightness[2] = 255;
+              }
+          }
+          if (type == 0xb)
+          {
+              uint8_t ctrlIndex = event.byte2 & 0x7f;
+              uint8_t ctrlValue = event.byte3 & 0x7f;
+              if (ctrlIndex < 3)
+              {
+                  // Modify rgb for button 1
+                  if (channel == 0)
+                  {
+                      buttonColour[ctrlIndex].red = ctrlValue * 2;
+                  }
+                  else if (channel == 1)
+                  {
+                      buttonColour[ctrlIndex].green = ctrlValue * 2;
+                  }
+                  else if (channel == 2)
+                  {
+                      buttonColour[ctrlIndex].blue = ctrlValue * 2;
+                  }
               }
           }
       }
